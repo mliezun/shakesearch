@@ -6,7 +6,8 @@ const Controller = {
       MatchCase: false,
       MatchWholeWord: false,
       UseRegularExpression: false,
-    }
+    },
+    lineLimit: 20
   },
 
   toggleOption: (opt) => {
@@ -56,12 +57,59 @@ const Controller = {
       <div class="row justify-content-center">
         <div class="fragment-wrapper col-xs-12 col-md-8">
           <div class="fragment-title">Fragment #${i+1}</div>
-          <div class="book-fragment">${lines}</div>
+          <div class="col text-center">
+            <button
+              title="Load previous ${Controller.data.lineLimit} lines"
+              class="btn btn-sm btn-outline-secondary btn-arrow"
+              onclick="Controller.loadMore('p', ${i})">
+              ↑
+            </button>
+          </div>
+          <div class="book-fragment" id="fragment${i}">${lines}</div>
+          <div class="col text-center">
+            <button
+              title="Load next ${Controller.data.lineLimit} lines"
+              class="btn btn-sm btn-outline-secondary btn-arrow"
+              onclick="Controller.loadMore('n', ${i})">
+              ↓
+            </button>
+          </div>
         </div>
       </div>
       `;
     }
     table.innerHTML = content;
+  },
+
+  loadMore: (k, i) => {
+    const frag = Controller.data.fragments[i];
+    let ix = 0;
+    if (k == "p") {
+      if (!frag.Previous || !frag.Previous.length) {
+        return;
+      }
+      ix = frag.Previous[0].StartIndex;
+    } else {
+      if (!frag.Next || !frag.Next.length) {
+        return;
+      }
+      ix = frag.Next[frag.Next.length-1].EndIndex+1;
+    }
+    const response = fetch(`/load?k=${k}&ix=${ix}&limit=${Controller.data.lineLimit}`).then((response) => {
+      response.json().then((result) => {
+        result = (result || []);
+        if (k == "p") {
+          const previous = Controller.data.fragments[i].Previous || [];
+          Controller.data.fragments[i].Previous = [...result, ...previous];
+        } else {
+          const next = Controller.data.fragments[i].Next || [];
+          Controller.data.fragments[i].Next = [...next, ...result];
+        }
+        const fragEl = document.getElementById(`fragment${i}`);
+        const { lines } = Controller.bookFragment(Controller.data.fragments[i]);
+        fragEl.innerHTML = lines;
+      });
+    });
   },
 
   bookFragment: (result) => {
@@ -129,4 +177,4 @@ const Controller = {
 
 const form = document.getElementById("form");
 form.addEventListener("submit", Controller.search);
-Controller.debouncedSearch = Controller.debounce(Controller.search, 300);
+Controller.debouncedSearch = Controller.debounce(Controller.search, 500);

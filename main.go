@@ -14,6 +14,7 @@ import (
 )
 
 const defaultLineOffset = 5
+const maxResults = 2000
 
 func main() {
 	searcher := Searcher{}
@@ -60,6 +61,11 @@ func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request
 			w.Write([]byte("missing search query in URL params"))
 			return
 		}
+		if len(query[0]) < 4 {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			w.Write([]byte("query should have at least 4 characters"))
+			return
+		}
 		searchOpts := SearchOptions{}
 		opts, ok := r.URL.Query()["opts"]
 		if ok {
@@ -73,6 +79,11 @@ func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request
 		if err != nil {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			w.Write([]byte(err.Error()))
+			return
+		}
+		if len(results) > maxResults {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("query is too broad, try something more specific"))
 			return
 		}
 		buf := &bytes.Buffer{}

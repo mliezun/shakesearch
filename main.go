@@ -60,7 +60,16 @@ func handleSearch(searcher Searcher) func(w http.ResponseWriter, r *http.Request
 			w.Write([]byte("missing search query in URL params"))
 			return
 		}
-		results, err := searcher.Search(query[0], &SearchOptions{})
+		searchOpts := SearchOptions{}
+		opts, ok := r.URL.Query()["opts"]
+		if ok {
+			if err := json.Unmarshal([]byte(opts[0]), &searchOpts); err != nil {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				w.Write([]byte(err.Error()))
+				return
+			}
+		}
+		results, err := searcher.Search(query[0], &searchOpts)
 		if err != nil {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			w.Write([]byte(err.Error()))
@@ -146,13 +155,13 @@ func (s *Searcher) Search(query string, options *SearchOptions) ([]MatchedSearch
 	if !options.MatchCase {
 		generatedQuery += "(?i)"
 	}
-	if options.UseRegularExpression {
-		generatedQuery += query
-	} else if options.MatchWholeWord {
-		//if regular expression is on ignore match whole word
-		generatedQuery += fmt.Sprintf("\\b%s\\b", regexp.QuoteMeta(query))
+	if !options.UseRegularExpression {
+		query = regexp.QuoteMeta(query)
+	}
+	if options.MatchWholeWord {
+		generatedQuery += fmt.Sprintf("\\b%s\\b", query)
 	} else {
-		generatedQuery += regexp.QuoteMeta(query)
+		generatedQuery += query
 	}
 	r, err := regexp.Compile(generatedQuery)
 	if err != nil {
@@ -179,9 +188,9 @@ func (s *Searcher) Search(query string, options *SearchOptions) ([]MatchedSearch
 func (s *Searcher) PreviousLines(startIx, lineOffset int) []*Line {
 	previous := make([]*Line, 0)
 	for i := 0; i < lineOffset; i++ {
-		ixStart := startIx - 1
+		ixStart := startIx - 2
 		if len(previous) != 0 {
-			ixStart = previous[0].StartIndex - 1
+			ixStart = previous[0].StartIndex - 2
 		}
 		if ixStart <= 0 {
 			break
@@ -195,7 +204,7 @@ func (s *Searcher) PreviousLines(startIx, lineOffset int) []*Line {
 func (s *Searcher) NextLines(endIx, lineOffset int) []*Line {
 	next := make([]*Line, 0)
 	for i := 0; i < lineOffset; i++ {
-		ixEnd := endIx + 1
+		ixEnd := endIx
 		if len(next) != 0 {
 			ixEnd = next[len(next)-1].EndIndex + 1
 		}

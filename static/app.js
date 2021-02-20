@@ -1,24 +1,132 @@
 const Controller = {
+  data: {
+    memo: {},
+    fragments: [],
+    options: {
+      MatchCase: false,
+      MatchWholeWord: false,
+      UseRegularExpression: false,
+    }
+  },
+
+  toggleOption: (opt) => {
+    Controller.data.options[opt] = !Controller.data.options[opt];
+    setTimeout(Controller.search, 0);
+  },
+
   search: (ev) => {
-    ev.preventDefault();
+    if (ev) {
+      ev.preventDefault();
+    }
     const form = document.getElementById("form");
     const data = Object.fromEntries(new FormData(form));
-    const response = fetch(`/search?q=${data.query}`).then((response) => {
+    const opts = Controller.data.options;
+    const response = fetch(`/search?q=${data.query}&opts=${JSON.stringify(opts)}`).then((response) => {
       response.json().then((results) => {
-        Controller.updateTable(results);
+        Controller.data.fragments = results;
+        setTimeout(Controller.updateTable, 0);
       });
     });
   },
 
-  updateTable: (results) => {
-    const table = document.getElementById("table-body");
-    const rows = [];
-    for (let result of results) {
-      rows.push(`<tr>${result}<tr/>`);
+  debouncedSearch: () => {},
+
+  debounce: (fn, t) => {
+    let timeoutID = null;
+    const cb = () => {
+      if (timeoutID != null) {
+        clearTimeout(timeoutID);
+      }
+      console.log(timeoutID);
+      timeoutID = setTimeout(() => {
+        fn();
+        timeoutID = null;
+      }, t);
+    };
+    return cb;
+  },
+
+  updateTable: () => {
+    const table = document.getElementById("fragments-container");
+    let content = '';
+    for (let i = 0; i < Controller.data.fragments.length; i++) {
+      const frag = Controller.data.fragments[i];
+      const { lines } = Controller.bookFragment(frag);
+      content += `
+      <div class="row justify-content-center">
+        <div class="fragment-wrapper col-xs-12 col-md-8">
+          <div class="fragment-title">Fragment #${i+1}</div>
+          <div class="book-fragment">${lines}</div>
+        </div>
+      </div>
+      `;
     }
-    table.innerHTML = rows;
+    table.innerHTML = content;
+  },
+
+  bookFragment: (result) => {
+    const previousLines = result.Previous;
+    const matchedLine = result.Matched;
+    const nextLines = result.Next;
+    let out = "";
+    for (let i = 0; i < previousLines.length; i++) {
+      const l = previousLines[i];
+      out += `${Controller.getText(l.Content)}<br>`
+    }
+    out += Controller.getTextHighlighted(matchedLine);
+    for (let i = 0; i < nextLines.length; i++) {
+      const l = nextLines[i];
+      out += `${Controller.getText(l.Content)}<br>`
+    }
+    return {
+      lines: out,
+    };
+  },
+
+  getText: (b) => {
+    return Controller.bytes2str(Controller.base64ToBytes(b));
+  },
+
+  getTextHighlighted: (l) => {
+    const b = Controller.base64ToBytes(l.Content);
+    const portion1 = b.slice(l.StartIndex-l.StartIndex, l.MatchedStartIndex-l.StartIndex);
+    const portion2 = b.slice(l.MatchedStartIndex-l.StartIndex, l.MatchedEndIndex-l.StartIndex);
+    const portion3 = b.slice(l.MatchedEndIndex-l.StartIndex, l.EndIndex-l.StartIndex);
+    const reunited = new Uint8Array([
+      ...portion1,
+      ...Controller.str2bytes(`<span class="match-highlighted">`),
+      ...portion2,
+      ...Controller.str2bytes(`</span>`),
+      ...portion3
+    ]);
+    const text = Controller.bytes2str(reunited);
+    return text;
+  },
+  
+  base64ToBytes: (base64) => {
+      const binary_string = window.atob(base64);
+      const len = binary_string.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+          bytes[i] = binary_string.charCodeAt(i);
+      }
+      return bytes;
+  },
+
+  bytes2str: (bytes) => {
+    const decoder = new TextDecoder();
+    return decoder.decode(bytes);
+  },
+
+  str2bytes: (str) => {
+    if (!Controller.data.memo[str]) {
+      const encoder = new TextEncoder();
+      Controller.data.memo[str] = encoder.encode(str);
+    }
+    return Controller.data.memo[str];
   },
 };
 
 const form = document.getElementById("form");
 form.addEventListener("submit", Controller.search);
+Controller.debouncedSearch = Controller.debounce(Controller.search, 300);

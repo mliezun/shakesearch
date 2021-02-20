@@ -1,0 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Gentium+Book+Basic&display=swap');
+
+.fragment-wrapper {
+    background-color: rgb(255, 248, 236);
+    padding: 30px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    border: 1px solid wheat;
+}
+
+.fragment-title {
+    text-align: center;
+    font-size: large;
+    font-family: 'Gentium Book Basic', serif;
+    margin-bottom: 10px;
+}
+
+.book-fragment {
+    font-family: 'Gentium Book Basic', serif;
+    font-size: medium;
+}
+
+.match-highlighted {
+    background-color: yellow;
+}
+
+.btn-fn {
+    font-family: monospace;
+    min-width: 40px;
+    max-width: 40px;
+}

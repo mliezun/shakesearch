@@ -44,3 +44,4 @@ Try this inputs:
 - UI/UX improvements
     - Add autocomplete functionality to search box.
     - Group results by book.
+    - Use WebWorkers to process result to make sure the page don't freezes.

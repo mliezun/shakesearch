@@ -38,7 +38,6 @@ const Controller = {
       if (timeoutID != null) {
         clearTimeout(timeoutID);
       }
-      console.log(timeoutID);
       timeoutID = setTimeout(() => {
         fn();
         timeoutID = null;

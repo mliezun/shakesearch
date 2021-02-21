@@ -45,3 +45,4 @@ Try this inputs:
     - Add autocomplete functionality to search box.
     - Group results by book.
     - Use WebWorkers to process result to make sure the page don't freezes.
+    - Make sure previous requests get cancelled as write in the search box.
